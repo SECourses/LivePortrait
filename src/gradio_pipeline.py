@@ -163,6 +163,10 @@ class GradioPipeline(LivePortraitPipeline):
         vy_ratio_crop_driving_video=-0.1,
         driving_smooth_observation_variance=3e-7,
         tab_selection=None,
+        target_eye_ratio=0.0,
+        target_lip_ratio=0.0,
+        flag_eye_lip_open_enabled=False,
+        source_max_dim_input=1280
     ):
         """ for video-driven potrait animation or video editing
         """
@@ -197,6 +201,10 @@ class GradioPipeline(LivePortraitPipeline):
                 'vx_ratio_crop_driving_video': vx_ratio_crop_driving_video,
                 'vy_ratio_crop_driving_video': vy_ratio_crop_driving_video,
                 'driving_smooth_observation_variance': driving_smooth_observation_variance,
+                'target_eye_ratio': target_eye_ratio,
+                'target_lip_ratio': target_lip_ratio,
+                'flag_eye_lip_open_enabled':flag_eye_lip_open_enabled,
+                'source_max_dim_input':source_max_dim_input,
             }
             # update config from user input
             self.args = update_args(self.args, args_user)

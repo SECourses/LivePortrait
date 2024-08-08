@@ -27,6 +27,20 @@ from .utils.rprint import rlog as log
 # from .utils.viz import viz_lmk
 from .live_portrait_wrapper import LivePortraitWrapper
 
+import re
+
+def generate_unique_filename(output_dir, source_name, driving_name):
+    base_name = f"{source_name}--{driving_name}"
+    pattern = re.compile(f"{re.escape(base_name)}_(\d+)(_concat)?.mp4")
+    
+    existing_files = os.listdir(output_dir)
+    numbers = [int(pattern.match(f).group(1)) for f in existing_files if pattern.match(f)]
+    
+    if not numbers:
+        return 1
+    else:
+        return max(numbers) + 1
+
 
 def make_abs_path(fn):
     return osp.join(osp.dirname(osp.realpath(__file__)), fn)
@@ -80,6 +94,7 @@ class LivePortraitPipeline(object):
         inf_cfg = self.live_portrait_wrapper.inference_cfg
         device = self.live_portrait_wrapper.device
         crop_cfg = self.cropper.crop_cfg
+        inf_cfg.source_max_dim = args.source_max_dim_input
 
         ######## load source input ########
         flag_is_source_video = False
@@ -308,6 +323,20 @@ class LivePortraitPipeline(object):
             t_new[..., 2].fill_(0)  # zero tz
             x_d_i_new = scale_new * (x_c_s @ R_new + delta_new) + t_new
 
+
+
+            if args.flag_eye_lip_open_enabled:
+                # Apply eye retargeting
+                combined_eye_ratio_tensor = self.live_portrait_wrapper.calc_combined_eye_ratio([[args.target_eye_ratio]], source_lmk)
+                eyes_delta = self.live_portrait_wrapper.retarget_eye(x_s, combined_eye_ratio_tensor)
+            
+                # Apply lip retargeting
+                combined_lip_ratio_tensor = self.live_portrait_wrapper.calc_combined_lip_ratio([[args.target_lip_ratio]], source_lmk)
+                lip_delta = self.live_portrait_wrapper.retarget_lip(x_s, combined_lip_ratio_tensor)
+            
+                # Apply the deltas
+                x_d_i_new += eyes_delta + lip_delta
+
             if inf_cfg.driving_option == "expression-friendly" and not flag_is_source_video:
                 if i == 0:
                     x_d_0_new = x_d_i_new
@@ -315,6 +344,7 @@ class LivePortraitPipeline(object):
                     # motion_multiplier *= inf_cfg.driving_multiplier
                 x_d_diff = (x_d_i_new - x_d_0_new) * motion_multiplier
                 x_d_i_new = x_d_diff + x_s
+
 
             # Algorithm 1:
             if not inf_cfg.flag_stitching and not inf_cfg.flag_eye_retargeting and not inf_cfg.flag_lip_retargeting:
@@ -376,13 +406,27 @@ class LivePortraitPipeline(object):
         flag_source_has_audio = flag_is_source_video and has_audio_stream(args.source)
         flag_driving_has_audio = (not flag_load_from_template) and has_audio_stream(args.driving)
 
+        # Generate unique filenames
+        source_name = osp.splitext(osp.basename(args.source))[0]
+        driving_name = osp.splitext(osp.basename(args.driving))[0]
+    
+        # Sanitize filenames
+        source_name = re.sub(r'[\\/*?:"<>|]', '_', source_name)
+        driving_name = re.sub(r'[\\/*?:"<>|]', '_', driving_name)
+
+        # Generate a single unique number for both files
+        unique_number = generate_unique_filename(args.output_dir, source_name, driving_name)
+
+        # Use the same unique number for both files
+        wfp_concat = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}_concat.mp4")
+        wfp = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}.mp4")
+
         ######### build the final concatenation result #########
         # driving frame | source frame | generation, or source frame | generation
         if flag_is_source_video:
             frames_concatenated = concat_frames(driving_rgb_crop_256x256_lst, img_crop_256x256_lst, I_p_lst)
         else:
             frames_concatenated = concat_frames(driving_rgb_crop_256x256_lst, [img_crop_256x256], I_p_lst)
-        wfp_concat = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_concat.mp4')
 
         # NOTE: update output fps
         output_fps = source_fps if flag_is_source_video else output_fps
@@ -404,14 +448,32 @@ class LivePortraitPipeline(object):
         else:
             images2video(I_p_lst, wfp=wfp, fps=output_fps)
 
-        ######### build the final result #########
         if flag_source_has_audio or flag_driving_has_audio:
-            wfp_with_audio = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_with_audio.mp4')
+
+            
             audio_from_which_video = args.driving if ((flag_driving_has_audio and args.audio_priority == 'driving') or (not flag_source_has_audio)) else args.source
+
             log(f"Audio is selected from {audio_from_which_video}")
+
+            # Generate temporary filename for the video with audio
+            wfp_with_audio = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}_temp_with_audio.mp4")
             add_audio_to_video(wfp, audio_from_which_video, wfp_with_audio)
-            os.replace(wfp_with_audio, wfp)
-            log(f"Replace {wfp_with_audio} with {wfp}")
+
+
+            # Rename the original file (without audio) to include "_no_audio"
+            wfp_no_audio = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}_no_audio.mp4")
+            os.rename(wfp, wfp_no_audio)
+
+            # Rename the file with audio to the final filename (without any suffix)
+            wfp_final = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}.mp4")
+            os.rename(wfp_with_audio, wfp_final)
+            log(f"Final video with audio: {wfp_final}")
+            log(f"Original video without audio preserved as: {wfp_no_audio}")
+
+            # Update wfp to the new final filename
+            wfp = wfp_final
+
+
 
         # final log
         if wfp_template not in (None, ''):

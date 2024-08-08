@@ -3,11 +3,24 @@
 """
 Pipeline of LivePortrait (Animal)
 """
-
+import re
+import os.path as osp
 import warnings
 warnings.filterwarnings("ignore", message="torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument.")
 warnings.filterwarnings("ignore", message="torch.utils.checkpoint: please pass in use_reentrant=True or use_reentrant=False explicitly.")
 warnings.filterwarnings("ignore", message="None of the inputs have requires_grad=True. Gradients will be None")
+
+def generate_unique_filename(output_dir, source_name, driving_name):
+    base_name = f"{source_name}--{driving_name}"
+    pattern = re.compile(f"{re.escape(base_name)}_(\d+)(_concat)?.mp4")
+    
+    existing_files = os.listdir(output_dir)
+    numbers = [int(pattern.match(f).group(1)) for f in existing_files if pattern.match(f)]
+    
+    if not numbers:
+        return 1
+    else:
+        return max(numbers) + 1
 
 import torch
 torch.backends.cudnn.benchmark = True # disable CUDNN_BACKEND_EXECUTION_PLAN_DESCRIPTOR warning
@@ -194,22 +207,36 @@ class LivePortraitPipelineAnimal(object):
         wfp_concat = None
         flag_driving_has_audio = (not flag_load_from_template) and has_audio_stream(args.driving)
 
+       # Generate unique filenames
+        source_name = osp.splitext(osp.basename(args.source))[0]
+        driving_name = osp.splitext(osp.basename(args.driving))[0]
+    
+        # Sanitize filenames
+        source_name = re.sub(r'[\\/*?:"<>|]', '_', source_name)
+        driving_name = re.sub(r'[\\/*?:"<>|]', '_', driving_name)
+
+        # Generate a single unique number for both files
+        unique_number = generate_unique_filename(args.output_dir, source_name, driving_name)
+
+        # Use the same unique number for both files
+        wfp_concat = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}_concat.mp4")
+        wfp = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}.mp4")
+        wfp_gif = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}.gif")
+
         ######### build the final concatenation result #########
         # driving frame | source image | generation
         frames_concatenated = concat_frames(driving_rgb_crop_256x256_lst, [img_crop_256x256], I_p_lst)
-        wfp_concat = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_concat.mp4')
         images2video(frames_concatenated, wfp=wfp_concat, fps=output_fps)
 
         if flag_driving_has_audio:
             # final result with concatenation
-            wfp_concat_with_audio = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_concat_with_audio.mp4')
+            wfp_concat_with_audio = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}_concat_with_audio.mp4")
             audio_from_which_video = args.driving
             add_audio_to_video(wfp_concat, audio_from_which_video, wfp_concat_with_audio)
             os.replace(wfp_concat_with_audio, wfp_concat)
             log(f"Replace {wfp_concat_with_audio} with {wfp_concat}")
 
         # save the animated result
-        wfp = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}.mp4')
         if I_p_pstbk_lst is not None and len(I_p_pstbk_lst) > 0:
             images2video(I_p_pstbk_lst, wfp=wfp, fps=output_fps)
         else:
@@ -217,21 +244,15 @@ class LivePortraitPipelineAnimal(object):
 
         ######### build the final result #########
         if flag_driving_has_audio:
-            wfp_with_audio = osp.join(args.output_dir, f'{basename(args.source)}--{basename(args.driving)}_with_audio.mp4')
+            wfp_with_audio = osp.join(args.output_dir, f"{source_name}--{driving_name}_{unique_number:04d}_with_audio.mp4")
             audio_from_which_video = args.driving
             add_audio_to_video(wfp, audio_from_which_video, wfp_with_audio)
             os.replace(wfp_with_audio, wfp)
             log(f"Replace {wfp_with_audio} with {wfp}")
 
-        # final log
-        if wfp_template not in (None, ''):
-            log(f'Animated template: {wfp_template}, you can specify `-d` argument with this template path next time to avoid cropping video, motion making and protecting privacy.', style='bold green')
-        log(f'Animated video: {wfp}')
-        log(f'Animated video with concat: {wfp_concat}')
-
         # build the gif
         wfp_gif = video2gif(wfp)
+        
         log(f'Animated gif: {wfp_gif}')
-
 
         return wfp, wfp_concat, wfp_gif
