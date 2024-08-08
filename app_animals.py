@@ -5,6 +5,8 @@ The entrance of the gradio for animal
 """
 
 import os
+import platform
+import argparse
 import tyro
 import subprocess
 import gradio as gr
@@ -15,6 +17,19 @@ from src.config.crop_config import CropConfig
 from src.config.argument_config import ArgumentConfig
 from src.config.inference_config import InferenceConfig
 
+def open_folder():
+    open_folder_path = os.path.abspath("animations")
+    if platform.system() == "Windows":
+        os.startfile(open_folder_path)
+    elif platform.system() == "Linux":
+        os.system(f'xdg-open "{open_folder_path}"')
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Gradio interface for image animation")
+    parser.add_argument("--share", action="store_true", help="Share the Gradio interface")
+    return parser.parse_args()
+
+cmd_args = parse_args()
 
 def partial_fields(target_class, kwargs):
     return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
@@ -156,7 +171,9 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                     scale_crop_driving_video = gr.Number(value=2.2, label="driving crop scale", minimum=1.8, maximum=3.2, step=0.05)
                     vx_ratio_crop_driving_video = gr.Number(value=0.0, label="driving crop x", minimum=-0.5, maximum=0.5, step=0.01)
                     vy_ratio_crop_driving_video = gr.Number(value=-0.1, label="driving crop y", minimum=-0.5, maximum=0.5, step=0.01)
-
+                with gr.Row():
+                    btn_open_outputs = gr.Button("Open Outputs Folder", variant="primary")
+                    btn_open_outputs.click(fn=open_folder)
     with gr.Row():
         with gr.Accordion(open=False, label="Animation Options"):
             with gr.Row():
@@ -242,7 +259,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
     )
 
 demo.launch(
-    server_port=args.server_port,
-    share=args.share,
-    server_name=args.server_name
+    share=cmd_args.share,
+    inbrowser=True
 )

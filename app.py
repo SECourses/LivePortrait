@@ -5,6 +5,9 @@ The entrance of the gradio for human
 """
 
 import os
+import platform
+import argparse
+
 import tyro
 import subprocess
 import gradio as gr
@@ -15,6 +18,19 @@ from src.config.crop_config import CropConfig
 from src.config.argument_config import ArgumentConfig
 from src.config.inference_config import InferenceConfig
 
+def open_folder():
+    open_folder_path = os.path.abspath("animations")
+    if platform.system() == "Windows":
+        os.startfile(open_folder_path)
+    elif platform.system() == "Linux":
+        os.system(f'xdg-open "{open_folder_path}"')
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Gradio interface for image animation")
+    parser.add_argument("--share", action="store_true", help="Share the Gradio interface")
+    return parser.parse_args()
+
+cmd_args = parse_args()
 
 def partial_fields(target_class, kwargs):
     return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
@@ -85,12 +101,14 @@ data_examples_i2v = [
     [osp.join(example_portrait_dir, "s2.jpg"), osp.join(example_video_dir, "d13.mp4"), True, True, True, True],
 ]
 data_examples_v2v = [
-    [osp.join(example_portrait_dir, "s13.mp4"), osp.join(example_video_dir, "d0.mp4"), True, True, True, False, False, 3e-7],
-    # [osp.join(example_portrait_dir, "s14.mp4"), osp.join(example_video_dir, "d18.mp4"), True, True, True, False, False, 3e-7],
-    # [osp.join(example_portrait_dir, "s15.mp4"), osp.join(example_video_dir, "d19.mp4"), True, True, True, False, False, 3e-7],
+
+    [osp.join(example_portrait_dir, "s18.mp4"), osp.join(example_video_dir, "d0.mp4"), True, True, True, False, False, 3e-7],
+    # [osp.join(example_portrait_dir, "s14.mp4"), osp.join(example_video_dir, "d18.mp4"), True, True, True, False, False, 1e-7],
+    # [osp.join(example_portrait_dir, "s15.mp4"), osp.join(example_video_dir, "d19.mp4"), True, True, True, False, False, 1e-7],
     [osp.join(example_portrait_dir, "s18.mp4"), osp.join(example_video_dir, "d6.mp4"), True, True, True, False, False, 3e-7],
-    # [osp.join(example_portrait_dir, "s19.mp4"), osp.join(example_video_dir, "d6.mp4"), True, True, True, False, False, 3e-7],
+    # [osp.join(example_portrait_dir, "s19.mp4"), osp.join(example_video_dir, "d6.mp4"), True, True, True, False, False, 1e-7],
     [osp.join(example_portrait_dir, "s20.mp4"), osp.join(example_video_dir, "d0.mp4"), True, True, True, False, False, 3e-7],
+
 ]
 #################### interface logic ####################
 
@@ -212,7 +230,14 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                 driving_option_input = gr.Radio(['expression-friendly', 'pose-friendly'], value="expression-friendly", label="driving option (i2v)")
                 driving_multiplier = gr.Number(value=1.0, label="driving multiplier (i2v)", minimum=0.0, maximum=2.0, step=0.02)
                 flag_video_editing_head_rotation = gr.Checkbox(value=False, label="relative head rotation (v2v)")
-                driving_smooth_observation_variance = gr.Number(value=3e-7, label="motion smooth strength (v2v)", minimum=1e-11, maximum=1e-2, step=1e-8)
+
+                driving_smooth_observation_variance = gr.Number(value=3e-7, label="motion smooth strength (v2v)", minimum=1e-11, maximum=1e-2, step=1e-8)                
+            with gr.Row():
+                flag_eye_lip_open_enabled= gr.Checkbox(value=False, label="Target Eye Lip Open Ratio")
+                target_eye_ratio_input = gr.Slider(minimum=0, maximum=0.8, step=0.05, value=0.3, label="target eyes-open ratio")
+                target_lip_ratio_input = gr.Slider(minimum=0, maximum=0.8, step=0.05, value=0.3, label="target lip-open ratio")
+            with gr.Row():
+                source_max_dim_input = gr.Slider(minimum=256, maximum=2560, step=64, value=1280, label="Source Maximum Dimension")
 
     gr.Markdown(load_description("assets/gradio/gradio_description_animate_clear.md"))
     with gr.Row():
@@ -224,8 +249,13 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
         with gr.Column():
             with gr.Accordion(open=True, label="The animated video"):
                 output_video_concat_i2v.render()
+
+                btn_open_outputs = gr.Button("Open Outputs Folder", variant="primary")
+                btn_open_outputs.click(fn=open_folder)
+
     with gr.Row():
         process_button_reset = gr.ClearButton([source_image_input, source_video_input, driving_video_input, output_video_i2v, output_video_concat_i2v], value="🧹 Clear")
+
 
     with gr.Row():
         # Examples
@@ -410,6 +440,10 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
             vy_ratio_crop_driving_video,
             driving_smooth_observation_variance,
             tab_selection,
+            target_eye_ratio_input,
+            target_lip_ratio_input,
+            flag_eye_lip_open_enabled,
+            source_max_dim_input
         ],
         outputs=[output_video_i2v, output_video_concat_i2v],
         show_progress=True
@@ -442,7 +476,6 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
     )
 
 demo.launch(
-    server_port=args.server_port,
-    share=args.share,
-    server_name=args.server_name
+    share=cmd_args.share,
+    inbrowser=True
 )
