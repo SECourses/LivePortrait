@@ -176,7 +176,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                         source_video_input = gr.Video()
                         gr.Examples(
                             examples=[
-                                [osp.join(example_portrait_dir, "s13.mp4")],
+                                [osp.join(example_portrait_dir, "s18.mp4")],
                                 # [osp.join(example_portrait_dir, "s14.mp4")],
                                 # [osp.join(example_portrait_dir, "s15.mp4")],
                                 [osp.join(example_portrait_dir, "s18.mp4")],
@@ -391,7 +391,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                 retargeting_input_video.render()
                 gr.Examples(
                     examples=[
-                        [osp.join(example_portrait_dir, "s13.mp4")],
+                        [osp.join(example_portrait_dir, "s18.mp4")],
                         # [osp.join(example_portrait_dir, "s18.mp4")],
                         [osp.join(example_portrait_dir, "s20.mp4")],
                         [osp.join(example_portrait_dir, "s29.mp4")],
