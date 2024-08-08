@@ -54,4 +54,11 @@ class ArgumentConfig(PrintableConfig):
     share: bool = False  # whether to share the server to public
     server_name: Optional[str] = "127.0.0.1"  # set the local server name, "0.0.0.0" to broadcast all
     flag_do_torch_compile: bool = False  # whether to use torch.compile to accelerate generation
+
+    target_eye_ratio: float = 0.0
+    target_lip_ratio: float = 0.0
+    flag_eye_lip_open_enabled: bool = False
+    source_max_dim_input: int = 1280
+
     gradio_temp_dir: Optional[str] = None  # directory to save gradio temp files
+

@@ -47,8 +47,7 @@ class InferenceConfig(PrintableConfig):
     driving_option: str = "pose-friendly" # "expression-friendly" or "pose-friendly"
     driving_multiplier: float = 1.0
     driving_smooth_observation_variance: float = 3e-7 # smooth strength scalar for the animated video when the input is a source video, the larger the number, the smoother the animated video; too much smoothness would result in loss of motion accuracy
-    source_max_dim: int = 1280 # the max dim of height and width of source image or video
-    source_division: int = 2 # make sure the height and width of source image or video can be divided by this number
+
 
     # NOT EXPORTED PARAMS
     lip_normalize_threshold: float = 0.03 # threshold for flag_normalize_lip
@@ -62,3 +61,8 @@ class InferenceConfig(PrintableConfig):
 
     mask_crop: ndarray = field(default_factory=lambda: cv2.imread(make_abs_path('../utils/resources/mask_template.png'), cv2.IMREAD_COLOR))
     size_gif: int = 256 # default gif size, TO IMPLEMENT
+
+    source_max_dim: int = 1920 # the max dim of height and width of source image or video
+    source_division: int = 2 # make sure the height and width of source image or video can be divided by this number
+    flag_eye_lip_open_enabled: bool = False
+
