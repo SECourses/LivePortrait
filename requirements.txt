@@ -1,7 +1,7 @@
 -r requirements_base.txt
 
 onnxruntime-gpu==1.18.0
-
+ninja
 huggingface_hub
 
 transformers==4.22.0
