@@ -1,6 +1,6 @@
 <div style="display: flex; justify-content: center; align-items: center; text-align: center;">
   <div>
-    <h1>LivePortrait++ V5 by SECourses: <a href="https://www.patreon.com/posts/107609670">https://www.patreon.com/posts/107609670</a></h1>
+    <h1>LivePortrait++ V6 by SECourses: <a href="https://www.patreon.com/posts/107609670">https://www.patreon.com/posts/107609670</a></h1>
     <h3>LivePortrait: Efficient Portrait Animation with Stitching and Retargeting Control</h3>
     <!-- <span>Add mimics and lip sync to your static portrait driven by a video</span> -->
     <!-- <span>Efficient Portrait Animation with Stitching and Retargeting Control</span> -->
