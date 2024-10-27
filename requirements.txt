@@ -1,6 +1,6 @@
 -r requirements_base.txt
 
-onnxruntime-gpu==1.18.0
+onnxruntime-gpu==1.19.0
 ninja
 huggingface_hub
 
